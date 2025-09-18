@@ -49,5 +49,10 @@ Este repositório contém o código-fonte para o **Aplicativo Móvel (Frontend)*
 - Preencha suas credenciais do Supabase no arquivo `main.py`.
 - Execute o servidor: `python -m uvicorn main:app --reload`
 
+
 ### 2. Frontend
-- Navegue até a pasta `guardiao-familiar-
+- Navegue até a pasta `guardiao-familiar-frontend`.
+- Baixe as dependências: `flutter pub get`.
+- Garanta que o backend está rodando.
+- Atualize a URL da API nos arquivos `.dart` para apontar para o seu backend.
+- Selecione um emulador e execute o app (F5 no VS Code).
