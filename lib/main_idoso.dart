@@ -1,4 +1,4 @@
-// lib/main_idoso.dart
+// lib/main_idoso.dart - Ponto de entrada para o App do Parente
 
 import 'package:flutter/material.dart';
 import 'package:guardiao_familiar/home_screen_idoso.dart';
@@ -14,6 +14,7 @@ class GuardiaoFamiliarIdosoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Guardião Familiar',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,

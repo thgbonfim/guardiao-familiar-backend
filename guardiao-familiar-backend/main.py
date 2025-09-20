@@ -1,19 +1,24 @@
-# main.py - Versão Definitiva com Lógica de Alerta e Sintaxe Corrigida
+# main.py - Versão Final e Definitiva com Todas as Lógicas e Correções
+
+import os
+import asyncio
+from datetime import datetime, timedelta, time
+from typing import List, Optional
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
-import uuid
-from datetime import datetime, timedelta, time
-import asyncio
-from contextlib import asynccontextmanager
 from supabase import create_client, Client
+from dotenv import load_dotenv
 
-# --- Configuração do Supabase ---
-# ATENÇÃO: COLOQUE AQUI AS CREDENCIAIS DO SEU PROJETO VÁLIDO
-url: str = "https://gpgsxzkvlgrhyijsrtwg.supabase.co"
-key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZ3N4emt2bGdyaHlpanNydHdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxMDU2NDcsImV4cCI6MjA3MzY4MTY0N30.-K17SCvWgbFFXuJpxnvkvAOA9VU38ncs3EINUM6NhEo"
+load_dotenv() # Carrega as variáveis do arquivo .env
+
+# --- Conexão com o Supabase ---
+url: str = os.getenv("SUPABASE_URL")
+key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
+# ---------------------------------
+
 # ---------------------------------
 # main.py - Versão Final e Completa com Login
 #

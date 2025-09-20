@@ -1,6 +1,9 @@
+// lib/home_screen.dart - (VERSÃO FINAL, COMPLETA E CORRIGIDA)
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
 import 'package:guardiao_familiar/add_relative_screen.dart';
 import 'package:guardiao_familiar/add_medication_screen.dart';
 
@@ -30,6 +33,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Parente> _parentes = [];
   bool _isLoading = true;
+  final String _apiUrl = "http://10.0.2.2:8000";
 
   @override
   void initState() {
@@ -41,14 +45,14 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     List<Parente> parentesCarregados = [];
     try {
-      final parentesUrl = Uri.parse('http://10.0.2.2:8000/familias/${widget.familyId}/parentes');
+      final parentesUrl = Uri.parse('$_apiUrl/familias/${widget.familyId}/parentes');
       final parentesResponse = await http.get(parentesUrl);
 
       if (parentesResponse.statusCode == 200) {
         final List<dynamic> parentesData = json.decode(parentesResponse.body);
         parentesCarregados = parentesData.map((data) => Parente(id: data['id'], nome: data['nome'])).toList();
         for (var parente in parentesCarregados) {
-          final remediosUrl = Uri.parse('http://10.0.2.2:8000/parentes/${parente.id}/remedios');
+          final remediosUrl = Uri.parse('$_apiUrl/parentes/${parente.id}/remedios');
           final remediosResponse = await http.get(remediosUrl);
           if (remediosResponse.statusCode == 200) {
             final List<dynamic> remediosData = json.decode(remediosResponse.body);
@@ -66,11 +70,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToAddRelative(BuildContext context) async {
-    await Navigator.push(
+    final bool? parenteFoiAdicionado = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => AddRelativeScreen(familyId: widget.familyId)),
     );
-    _fetchData();
+    if (parenteFoiAdicionado == true) {
+      _fetchData();
+    }
   }
 
   void _navigateToAddMedication(BuildContext context, Parente parente) async {
@@ -84,7 +90,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.familyName), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: Text(widget.familyName),
+        automaticallyImplyLeading: false,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        foregroundColor: Theme.of(context).colorScheme.primary,
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _parentes.isEmpty ? _buildEmptyState() : _buildRelativesList(),
@@ -97,53 +109,78 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyState() {
+    final textTheme = Theme.of(context).textTheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(32.0),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Text('Bem-vindo(a)!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          const Text('Vamos começar adicionando o familiar que você irá cuidar.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () => _navigateToAddRelative(context),
-            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
-            child: const Text('+ Adicionar Parente', style: TextStyle(fontSize: 18)),
+          Icon(Icons.group_add_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 24),
+          Text(
+            'Nenhum parente cadastrado.',
+            style: textTheme.headlineSmall?.copyWith(color: Colors.grey[600]),
+            textAlign: TextAlign.center,
           ),
-        ],),
+          const SizedBox(height: 12),
+          Text(
+            'Clique no botão "+" para adicionar um familiar e começar a cuidar.',
+            style: textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+            textAlign: TextAlign.center,
+          ),
+        ]),
       ),
     );
   }
 
   Widget _buildRelativesList() {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
     return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(8.0),
       itemCount: _parentes.length,
       itemBuilder: (context, index) {
         final parente = _parentes[index];
         return Card(
-          elevation: 4, margin: const EdgeInsets.only(bottom: 16.0),
+          elevation: 4,
+          shadowColor: colorScheme.primary.withOpacity(0.2),
+          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(parente.nome, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+              Text(
+                parente.nome,
+                style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary),
+              ),
+              const Divider(height: 24.0, thickness: 0.5),
               if (parente.remedios.isEmpty)
-                const Text('Nenhum lembrete de remédio cadastrado ainda.')
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Center(
+                    child: Text('Nenhum lembrete cadastrado.', style: textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+                  ),
+                )
               else
-                ...parente.remedios.map((remedio) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: Text('• ${remedio.nome} - ${remedio.horario}'),
+                ...parente.remedios.map((remedio) => ListTile(
+                      leading: Icon(Icons.medication_outlined, color: colorScheme.secondary),
+                      title: Text(remedio.nome, style: const TextStyle(fontWeight: FontWeight.w500)),
+                      subtitle: Text(remedio.horario),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
                     )).toList(),
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerRight,
-                child: ElevatedButton(
+                child: FilledButton.tonal(
                   onPressed: () => _navigateToAddMedication(context, parente),
-                  child: const Text('+ Novo Lembrete'),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.add, size: 20),
+                    SizedBox(width: 8),
+                    Text('Novo Lembrete'),
+                  ]),
                 ),
               ),
-            ],),
+            ]),
           ),
         );
       },
