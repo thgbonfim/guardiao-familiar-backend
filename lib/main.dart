@@ -58,7 +58,7 @@ class GuardiaoFamiliarApp extends StatelessWidget {
 
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30.0),
-            borderSide: BorderSide(color: Colors.teal, width: 2.5),
+            borderSide: const BorderSide(color: Colors.teal, width: 2.5),
           ),
         ),
       ),

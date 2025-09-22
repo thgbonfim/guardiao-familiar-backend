@@ -1,4 +1,4 @@
-// add_medication_screen.dart - Tela para cadastrar um lembrete de remédio
+// lib/add_medication_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -8,52 +8,88 @@ class AddMedicationScreen extends StatefulWidget {
   final String parenteId;
   final String parenteNome;
 
-  const AddMedicationScreen({required this.parenteId, required this.parenteNome, super.key});
+  const AddMedicationScreen({
+    required this.parenteId,
+    required this.parenteNome,
+    super.key,
+  });
 
   @override
   _AddMedicationScreenState createState() => _AddMedicationScreenState();
 }
 
 class _AddMedicationScreenState extends State<AddMedicationScreen> {
-  final _remedioNomeController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nomeController = TextEditingController();
   final _horarioController = TextEditingController();
   
-  // Mapa para controlar quais dias da semana estão selecionados
+  // Opções para os dias da semana
   final Map<String, bool> _diasSelecionados = {
-    'domingo': false, 'segunda': true, 'terca': true, 'quarta': true, 
-    'quinta': true, 'sexta': true, 'sabado': false,
+    'segunda': true, 'terca': true, 'quarta': true, 
+    'quinta': true, 'sexta': true, 'sabado': false, 'domingo': false
   };
 
-  Future<void> _salvarLembrete() async {
-    final url = Uri.parse('http://10.0.2.2:8000/remedios/cadastrar');
-    
-    // Pega a lista de dias que foram marcados como 'true'
-    final List<String> dias = _diasSelecionados.entries
+  bool _isLoading = false;
+
+  Future<void> _saveMedication() async {
+    // 1. Valida o formulário para garantir que os campos não estão vazios
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final List<String> diasFinais = _diasSelecionados.entries
       .where((entry) => entry.value)
       .map((entry) => entry.key)
       .toList();
 
+    if (diasFinais.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Por favor, selecione pelo menos um dia da semana.')),
+        );
+        return;
+    }
+
+    setState(() => _isLoading = true);
+
     try {
+      final url = Uri.parse('http://10.0.2.2:8000/remedios/cadastrar');
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'id_do_parente': widget.parenteId,
-          'nome_do_remedio': _remedioNomeController.text,
+          'nome_do_remedio': _nomeController.text,
           'horario': _horarioController.text,
-          'dias_da_semana': dias,
+          'dias_da_semana': diasFinais,
         }),
       );
 
-      if (response.statusCode == 200) {
-        print("LEMBRETE DE REMÉDIO SALVO COM SUCESSO!");
-        if (mounted) Navigator.pop(context); // Volta para a tela principal
-      } else {
-        print("ERRO AO SALVAR LEMBRETE: Código ${response.statusCode}");
-        print("Resposta da API: ${response.body}");
+      if (mounted) {
+        if (response.statusCode == 200) {
+          print("SUCESSO! Enviando sinal 'true' de volta para a HomeScreen.");
+          
+          // ✅ A CORREÇÃO ESTÁ AQUI:
+          // Retorna 'true' para a tela anterior (HomeScreen) para avisar que
+          // um novo remédio foi adicionado e a lista precisa ser atualizada.
+          Navigator.pop(context, true);
+
+        } else {
+          final errorData = json.decode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro: ${errorData['detail'] ?? 'Não foi possível salvar o lembrete.'}')),
+          );
+        }
       }
     } catch (e) {
-      print("ERRO DE CONEXÃO: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro de conexão ao salvar o lembrete.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -64,44 +100,52 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
         title: Text('Novo Lembrete para ${widget.parenteNome}'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _remedioNomeController,
-              decoration: InputDecoration(labelText: 'Nome do Remédio'),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _nomeController,
+                  decoration: const InputDecoration(labelText: 'Nome do Remédio'),
+                  validator: (value) => (value == null || value.trim().isEmpty) ? 'Campo obrigatório' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _horarioController,
+                  decoration: const InputDecoration(labelText: 'Horário (HH:MM)', hintText: 'Ex: 08:30'),
+                   validator: (value) => (value == null || value.trim().isEmpty) ? 'Campo obrigatório' : null,
+                ),
+                const SizedBox(height: 24),
+                Text('Repetir nos dias:', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 4.0,
+                  children: _diasSelecionados.keys.map((dia) {
+                    return FilterChip(
+                      label: Text(dia.substring(0,3).toUpperCase()),
+                      selected: _diasSelecionados[dia]!,
+                      onSelected: (bool selecionado) {
+                        setState(() {
+                          _diasSelecionados[dia] = selecionado;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _saveMedication,
+                  child: _isLoading 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 3)) 
+                      : const Text('SALVAR LEMBRETE'),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            TextField(
-              controller: _horarioController,
-              decoration: InputDecoration(labelText: 'Horário (ex: 08:00)'),
-              keyboardType: TextInputType.datetime,
-            ),
-            SizedBox(height: 24),
-            Text('Dias da Semana:', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 8),
-            // Componentes para selecionar os dias da semana
-            Wrap(
-              spacing: 8.0,
-              children: _diasSelecionados.keys.map((String dia) {
-                return FilterChip(
-                  label: Text(dia.substring(0, 3).toUpperCase()),
-                  selected: _diasSelecionados[dia]!,
-                  onSelected: (bool selecionado) {
-                    setState(() {
-                      _diasSelecionados[dia] = selecionado;
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _salvarLembrete,
-              child: Text('SALVAR LEMBRETE'),
-            ),
-          ],
+          ),
         ),
       ),
     );

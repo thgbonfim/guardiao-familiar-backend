@@ -78,6 +78,7 @@ async def login_usuario(dados: UsuarioLogin):
         }
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"E-mail ou senha inválidos. Erro: {str(e)}")
+    
 @app.post("/usuarios/cadastrar")
 async def cadastrar_usuario(dados: UsuarioCadastro):
     try:

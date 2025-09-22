@@ -86,8 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: CustomScrollView(
           slivers: [
-            SliverAppBar(
-              title: const Text("Entrar", style: TextStyle(color: Colors.white)),
+            const SliverAppBar(
+              title: Text("Entrar", style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.transparent,
               elevation: 0,
               foregroundColor: Colors.white,

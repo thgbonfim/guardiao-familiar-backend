@@ -82,8 +82,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         child: CustomScrollView(
           slivers: [
-            SliverAppBar(
-              title: const Text("Crie sua Conta", style: TextStyle(color: Colors.white)),
+            const SliverAppBar(
+              title: Text("Crie sua Conta", style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.transparent,
               elevation: 0,
               foregroundColor: Colors.white,
