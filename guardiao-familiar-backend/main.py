@@ -1,4 +1,5 @@
 import os
+import uuid
 from typing import List, Optional
 from contextlib import asynccontextmanager
 
@@ -103,7 +104,6 @@ async def cadastrar_usuario(dados: UsuarioCadastro):
 @app.post("/familias/criar")
 async def criar_familia(dados: FamiliaCadastro):
     try:
-        # Cria a nova família
         familia_response = supabase.table("familias").insert({
             "nome_da_familia": dados.nome_da_familia
         }).execute()
@@ -112,7 +112,6 @@ async def criar_familia(dados: FamiliaCadastro):
 
         id_nova_familia = familia_response.data[0]["id"]
 
-        # Associa o usuário à família
         update_response = supabase.table("usuarios").update({
             "id_da_familia": id_nova_familia
         }).eq("id", dados.id_do_usuario).execute()
@@ -128,7 +127,6 @@ async def criar_familia(dados: FamiliaCadastro):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 @app.post("/parentes/cadastrar", status_code=status.HTTP_201_CREATED)
 async def cadastrar_parente(dados: ParenteCadastro):
     try:
@@ -137,7 +135,6 @@ async def cadastrar_parente(dados: ParenteCadastro):
             "nome": dados.nome,
             "apelido": dados.apelido
         }).execute()
-
         if getattr(response, 'error', None):
             raise Exception(response.error.message)
 
@@ -150,10 +147,15 @@ async def cadastrar_parente(dados: ParenteCadastro):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+# --- Endpoint atualizado para cadastrar remédio com ID único ---
 @app.post("/remedios/cadastrar")
 async def cadastrar_remedio(dados: RemedioCadastro):
     try:
+        # --- Gera ID único para cada remédio ---
+        id_unico = str(uuid.uuid4())  # ID totalmente único
+
         response = supabase.table("remedios").insert({
+            "id": id_unico,
             "id_do_parente": dados.id_do_parente,
             "nome_do_remedio": dados.nome_do_remedio,
             "horario": dados.horario,
@@ -161,9 +163,10 @@ async def cadastrar_remedio(dados: RemedioCadastro):
         }).execute()
         if getattr(response, 'error', None):
             raise Exception(response.error.message)
+
         return {
             "mensagem": "Lembrete de remédio cadastrado com sucesso!",
-            "id_do_remedio": response.data[0]["id"]
+            "id_do_remedio": id_unico
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -189,18 +192,15 @@ async def listar_parentes_da_familia(familia_id: str):
         return response.data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/parentes/{parente_id}/remedios")
 async def listar_remedios_do_parente(parente_id: str):
     try:
-        # Busca os remédios do parente
         remedios_response = supabase.table("remedios").select("*").eq("id_do_parente", parente_id).execute()
         if getattr(remedios_response, 'error', None):
             raise Exception(remedios_response.error.message)
-
         remedios = remedios_response.data
 
-        # Busca todas as confirmações dos remédios desse parente
-        # Uma forma simples (se não tiver muitos remédios) é buscar confirmações filtrando pelo id_do_remedio
         remedio_ids = [r['id'] for r in remedios]
         if remedio_ids:
             confirmacoes_response = supabase.table("confirmacoes").select("id_do_remedio").in_("id_do_remedio", remedio_ids).execute()
@@ -210,11 +210,9 @@ async def listar_remedios_do_parente(parente_id: str):
         else:
             confirmados_ids = set()
 
-        # Acrescenta campo 'confirmado' para cada remédio
         for remedio in remedios:
-            remedio['confirmado'] = remedio['id'] in confirmados_ids
+            remedio['foi_tomado'] = remedio['id'] in confirmados_ids
 
         return remedios
-
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

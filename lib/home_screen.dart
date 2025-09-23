@@ -1,13 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:logging/logging.dart';
 
-// ✅ GARANTA QUE ESTES ARQUIVOS EXISTAM E ESTEJAM IMPORTADOS
 import 'package:guardiao_familiar/add_relative_screen.dart';
 import 'package:guardiao_familiar/add_medication_screen.dart';
 
-// Modelos de dados
 class Parente {
   final String id;
   final String nome;
@@ -16,9 +15,16 @@ class Parente {
 }
 
 class Remedio {
+  final String id;
   final String nome;
   final String horario;
-  Remedio({required this.nome, required this.horario});
+  bool foiTomado;
+  Remedio({
+    required this.id,
+    required this.nome,
+    required this.horario,
+    this.foiTomado = false,
+  });
 }
 
 class HomeScreen extends StatefulWidget {
@@ -32,48 +38,64 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final Logger logger = Logger('HomeScreen');
-  List<Parente> _parentes = [];
-  bool _isLoading = true;
   final String _apiUrl = "http://10.0.2.2:8000";
+
+  final ValueNotifier<List<Parente>> _parentesNotifier = ValueNotifier([]);
+  bool _isLoading = true;
+  late Timer _timer;
 
   @override
   void initState() {
     super.initState();
-
     _setupLogging();
     _fetchData();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchData());
   }
-void _setupLogging() {
-  Logger.root.level = Level.ALL;
-  Logger.root.onRecord.listen((record) {
-    debugPrint('[${record.level.name}] ${record.time}: ${record.loggerName} - ${record.message}');
-  });
-}
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _parentesNotifier.dispose();
+    super.dispose();
+  }
+
+  void _setupLogging() {
+    Logger.root.level = Level.ALL;
+    Logger.root.onRecord.listen((record) {
+      debugPrint(
+          '[${record.level.name}] ${record.time}: ${record.loggerName} - ${record.message}');
+    });
+  }
 
   Future<void> _fetchData() async {
     if (mounted) setState(() => _isLoading = true);
-
     try {
       final parentesUrl = Uri.parse('$_apiUrl/familias/${widget.familyId}/parentes');
       final parentesResponse = await http.get(parentesUrl);
-
       if (parentesResponse.statusCode == 200) {
         final List<dynamic> parentesData = json.decode(parentesResponse.body);
-        final List<Parente> parentesCarregados = parentesData.map((data) => Parente(id: data['id'], nome: data['nome'])).toList();
+        final List<Parente> parentesCarregados = parentesData
+            .map((data) => Parente(id: data['id'], nome: data['nome']))
+            .toList();
 
-        if (parentesCarregados.isNotEmpty) {
-          final futuresRemedios = parentesCarregados.map((parente) async {
-            final remediosUrl = Uri.parse('$_apiUrl/parentes/${parente.id}/remedios');
-            final remediosResponse = await http.get(remediosUrl);
-            if (remediosResponse.statusCode == 200) {
-              final List<dynamic> remediosData = json.decode(remediosResponse.body);
-              parente.remedios = remediosData.map((remedioData) => Remedio(nome: remedioData['nome_do_remedio'], horario: remedioData['horario'])).toList();
-            }
-          }).toList();
-          await Future.wait(futuresRemedios);
-        }
+        final futuresRemedios = parentesCarregados.map((parente) async {
+          final remediosUrl = Uri.parse('$_apiUrl/parentes/${parente.id}/remedios');
+          final remediosResponse = await http.get(remediosUrl);
+          if (remediosResponse.statusCode == 200) {
+            final List<dynamic> remediosData = json.decode(remediosResponse.body);
+            parente.remedios = remediosData
+                .map((r) => Remedio(
+                      id: r['id'],
+                      nome: r['nome_do_remedio'],
+                      horario: r['horario'],
+                      foiTomado: r['foi_tomado'] ?? false,
+                    ))
+                .toList();
+          }
+        }).toList();
 
-        if (mounted) setState(() => _parentes = parentesCarregados);
+        await Future.wait(futuresRemedios);
+        _parentesNotifier.value = parentesCarregados;
       }
     } catch (e) {
       logger.severe("Erro ao buscar dados: $e");
@@ -82,30 +104,46 @@ void _setupLogging() {
     }
   }
 
-  void _navigateToAddRelative(BuildContext context) async {
-    final bool? parenteFoiAdicionado = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AddRelativeScreen(familyId: widget.familyId)),
-    );
-    if (parenteFoiAdicionado == true) {
-      _fetchData();
+  Future<void> _toggleConfirmarRemedio(Parente parente, Remedio remedio, bool novoValor) async {
+    try {
+      // 🔹 Endpoint corrigido: /remedios/confirmar
+      final url = Uri.parse('$_apiUrl/remedios/confirmar');
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({"id_do_remedio": remedio.id}),
+      );
+
+      if (response.statusCode == 200) {
+        remedio.foiTomado = novoValor;
+        _parentesNotifier.notifyListeners();
+        logger.info(
+            "Remédio ${remedio.nome} atualizado para ${novoValor ? "Tomado" : "Não tomado"}");
+      } else {
+        logger.warning("Falha ao confirmar remédio: ${response.body}");
+      }
+    } catch (e) {
+      logger.severe("Erro ao confirmar remédio: $e");
     }
   }
 
-  void _navigateToAddMedication(BuildContext context, Parente parente) async {
-    logger.info("Botão 'Novo Lembrete' para ${parente.nome} foi clicado. Navegando...");
+  void _navigateToAddRelative(BuildContext context) async {
+    final bool? parenteFoiAdicionado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => AddRelativeScreen(familyId: widget.familyId)),
+    );
+    if (parenteFoiAdicionado == true) _fetchData();
+  }
 
+  void _navigateToAddMedication(BuildContext context, Parente parente) async {
     final bool? remedioFoiAdicionado = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => AddMedicationScreen(parenteId: parente.id, parenteNome: parente.nome)),
+      MaterialPageRoute(
+          builder: (context) =>
+              AddMedicationScreen(parenteId: parente.id, parenteNome: parente.nome)),
     );
-
-    logger.info("Voltou da tela de adicionar remédio. Resultado: $remedioFoiAdicionado");
-
-    if (remedioFoiAdicionado == true) {
-      logger.info("Resultado foi TRUE. Atualizando a lista de remédios...");
-      _fetchData();
-    }
+    if (remedioFoiAdicionado == true) _fetchData();
   }
 
   @override
@@ -122,7 +160,68 @@ void _setupLogging() {
         onRefresh: _fetchData,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _parentes.isEmpty ? _buildEmptyState() : _buildRelativesList(),
+            : ValueListenableBuilder<List<Parente>>(
+                valueListenable: _parentesNotifier,
+                builder: (context, parentes, _) {
+                  if (parentes.isEmpty) return _buildEmptyState();
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: parentes.length,
+                    itemBuilder: (context, index) {
+                      final parente = parentes[index];
+                      return Card(
+                        elevation: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 8.0),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.0)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(parente.nome,
+                                  style: Theme.of(context).textTheme.headlineSmall),
+                              const Divider(),
+                              if (parente.remedios.isEmpty)
+                                const Text('Nenhum lembrete cadastrado.')
+                              else
+                                ...parente.remedios.map((remedio) => CheckboxListTile(
+                                      value: remedio.foiTomado,
+                                      onChanged: (novoValor) {
+                                        if (novoValor != null &&
+                                            !remedio.foiTomado) {
+                                          _toggleConfirmarRemedio(
+                                              parente, remedio, novoValor);
+                                        }
+                                      },
+                                      title: Text(remedio.nome),
+                                      subtitle: Text(remedio.horario),
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                    )),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: FilledButton.tonal(
+                                  onPressed: () =>
+                                      _navigateToAddMedication(context, parente),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add),
+                                      SizedBox(width: 8),
+                                      Text('Novo Lembrete'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToAddRelative(context),
@@ -133,60 +232,7 @@ void _setupLogging() {
   }
 
   Widget _buildEmptyState() {
-    return const Center(child: Text("Clique no '+' para adicionar um parente."));
-  }
-
-  Widget _buildRelativesList() {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-    return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
-      itemCount: _parentes.length,
-      itemBuilder: (context, index) {
-        final parente = _parentes[index];
-        return Card(
-          elevation: 4,
-         shadowColor: colorScheme.primary.withAlpha((0.2 * 255).round()),
-
-          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                parente.nome,
-                style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary),
-              ),
-              const Divider(height: 24.0, thickness: 0.5),
-              if (parente.remedios.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Center(child: Text('Nenhum lembrete cadastrado.')),
-                )
-              else
-                ...parente.remedios.map((remedio) => ListTile(
-                      leading: Icon(Icons.medication_outlined, color: colorScheme.secondary),
-                      title: Text(remedio.nome, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: Text(remedio.horario),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                    )),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.tonal(
-                  onPressed: () => _navigateToAddMedication(context, parente),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.add, size: 20),
-                    SizedBox(width: 8),
-                    Text('Novo Lembrete'),
-                  ]),
-                ),
-              ),
-            ]),
-          ),
-        );
-      },
-    );
+    return const Center(
+        child: Text("Clique no '+' para adicionar um parente."));
   }
 }
