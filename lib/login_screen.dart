@@ -8,10 +8,10 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  LoginScreenState createState() => LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -77,8 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.8),
-              Theme.of(context).colorScheme.primary.withOpacity(0.5),
+            Theme.of(context).colorScheme.primary.withAlpha((0.8 * 255).round()),
+Theme.of(context).colorScheme.primary.withAlpha((0.5 * 255).round()),
+
               Colors.white,
             ],
             stops: const [0.0, 0.4, 1.0],

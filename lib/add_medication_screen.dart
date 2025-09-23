@@ -15,10 +15,10 @@ class AddMedicationScreen extends StatefulWidget {
   });
 
   @override
-  _AddMedicationScreenState createState() => _AddMedicationScreenState();
+  AddMedicationScreenState createState() => AddMedicationScreenState();
 }
 
-class _AddMedicationScreenState extends State<AddMedicationScreen> {
+class AddMedicationScreenState extends State<AddMedicationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
   final _horarioController = TextEditingController();
@@ -32,7 +32,6 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   bool _isLoading = false;
 
   Future<void> _saveMedication() async {
-    // 1. Valida o formulário para garantir que os campos não estão vazios
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -66,13 +65,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
       if (mounted) {
         if (response.statusCode == 200) {
-          print("SUCESSO! Enviando sinal 'true' de volta para a HomeScreen.");
-          
-          // ✅ A CORREÇÃO ESTÁ AQUI:
-          // Retorna 'true' para a tela anterior (HomeScreen) para avisar que
-          // um novo remédio foi adicionado e a lista precisa ser atualizada.
           Navigator.pop(context, true);
-
         } else {
           final errorData = json.decode(response.body);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -116,7 +109,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                 TextFormField(
                   controller: _horarioController,
                   decoration: const InputDecoration(labelText: 'Horário (HH:MM)', hintText: 'Ex: 08:30'),
-                   validator: (value) => (value == null || value.trim().isEmpty) ? 'Campo obrigatório' : null,
+                  validator: (value) => (value == null || value.trim().isEmpty) ? 'Campo obrigatório' : null,
                 ),
                 const SizedBox(height: 24),
                 Text('Repetir nos dias:', style: Theme.of(context).textTheme.titleMedium),

@@ -1,10 +1,19 @@
-// lib/main_idoso.dart - Ponto de entrada para o App do Parente
-
 import 'package:flutter/material.dart';
 import 'package:guardiao_familiar/home_screen_idoso.dart';
+import 'package:logging/logging.dart';
 
 void main() {
+  _setupLogging();
   runApp(const GuardiaoFamiliarIdosoApp());
+}
+
+void _setupLogging() {
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    debugPrint(
+      '[${record.level.name}] ${record.time}: ${record.loggerName} - ${record.message}',
+    );
+  });
 }
 
 class GuardiaoFamiliarIdosoApp extends StatelessWidget {

@@ -8,7 +8,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
+   
 
     return Scaffold(
       body: Container(
@@ -17,8 +17,9 @@ class WelcomeScreen extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withOpacity(0.8),
-              colorScheme.primary.withOpacity(0.5),
+         Theme.of(context).colorScheme.primary.withAlpha((0.8 * 255).round()),
+Theme.of(context).colorScheme.primary.withAlpha((0.5 * 255).round()),
+
               Colors.white,
             ],
             stops: const [0.0, 0.4, 1.0],
@@ -39,7 +40,8 @@ class WelcomeScreen extends StatelessWidget {
                     Shadow(
                       offset: const Offset(2.0, 2.0),
                       blurRadius: 4.0,
-                      color: Colors.black.withOpacity(0.25),
+                     color: Colors.black.withAlpha((0.25 * 255).round()),
+
                     ),
                   ],
                 ),
@@ -54,7 +56,8 @@ class WelcomeScreen extends StatelessWidget {
                       Shadow(
                         offset: const Offset(1.0, 1.0),
                         blurRadius: 3.0,
-                        color: Colors.black.withOpacity(0.3),
+                       color: Colors.black.withAlpha((0.3 * 255).round()), // 0.3 = 30% de opacidade
+
                       ),
                     ],
                   ),

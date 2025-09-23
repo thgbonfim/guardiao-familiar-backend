@@ -1,8 +1,7 @@
-// lib/home_screen.dart - (VERSÃO FINAL COM NAVEGAÇÃO CORRIGIDA)
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:logging/logging.dart';
 
 // ✅ GARANTA QUE ESTES ARQUIVOS EXISTAM E ESTEJAM IMPORTADOS
 import 'package:guardiao_familiar/add_relative_screen.dart';
@@ -32,6 +31,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final Logger logger = Logger('HomeScreen');
   List<Parente> _parentes = [];
   bool _isLoading = true;
   final String _apiUrl = "http://10.0.2.2:8000";
@@ -39,8 +39,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+
+    _setupLogging();
     _fetchData();
   }
+void _setupLogging() {
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    debugPrint('[${record.level.name}] ${record.time}: ${record.loggerName} - ${record.message}');
+  });
+}
 
   Future<void> _fetchData() async {
     if (mounted) setState(() => _isLoading = true);
@@ -64,11 +72,11 @@ class _HomeScreenState extends State<HomeScreen> {
           }).toList();
           await Future.wait(futuresRemedios);
         }
-        
+
         if (mounted) setState(() => _parentes = parentesCarregados);
       }
     } catch (e) {
-      print("Erro ao buscar dados: $e");
+      logger.severe("Erro ao buscar dados: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -84,19 +92,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ ESTA É A FUNÇÃO DO BOTÃO "NOVO LEMBRETE"
   void _navigateToAddMedication(BuildContext context, Parente parente) async {
-    print("Botão 'Novo Lembrete' para ${parente.nome} foi clicado. Navegando...");
-    
+    logger.info("Botão 'Novo Lembrete' para ${parente.nome} foi clicado. Navegando...");
+
     final bool? remedioFoiAdicionado = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => AddMedicationScreen(parenteId: parente.id, parenteNome: parente.nome)),
     );
 
-    print("Voltou da tela de adicionar remédio. Resultado: $remedioFoiAdicionado");
-    
+    logger.info("Voltou da tela de adicionar remédio. Resultado: $remedioFoiAdicionado");
+
     if (remedioFoiAdicionado == true) {
-      print("Resultado foi TRUE. Atualizando a lista de remédios...");
+      logger.info("Resultado foi TRUE. Atualizando a lista de remédios...");
       _fetchData();
     }
   }
@@ -126,8 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyState() {
-    // ... (código do estado vazio, já está correto)
-    return Center(child: Text("Clique no '+' para adicionar um parente."));
+    return const Center(child: Text("Clique no '+' para adicionar um parente."));
   }
 
   Widget _buildRelativesList() {
@@ -140,7 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final parente = _parentes[index];
         return Card(
           elevation: 4,
-          shadowColor: colorScheme.primary.withOpacity(0.2),
+         shadowColor: colorScheme.primary.withAlpha((0.2 * 255).round()),
+
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
           child: Padding(

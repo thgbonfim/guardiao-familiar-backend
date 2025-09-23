@@ -9,10 +9,10 @@ class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  RegisterScreenState createState() => RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class RegisterScreenState extends State<RegisterScreen> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -73,8 +73,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.8),
-              Theme.of(context).colorScheme.primary.withOpacity(0.5),
+           Theme.of(context).colorScheme.primary.withAlpha((0.8 * 255).round()),
+Theme.of(context).colorScheme.primary.withAlpha((0.5 * 255).round()),
+
               Colors.white,
             ],
             stops: const [0.0, 0.4, 1.0],
