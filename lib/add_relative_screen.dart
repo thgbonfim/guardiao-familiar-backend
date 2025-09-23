@@ -16,7 +16,7 @@ class _AddRelativeScreenState extends State<AddRelativeScreen> {
   final _nameController = TextEditingController();
   final _nicknameController = TextEditingController();
   bool _isLoading = false;
-  String? _errorMessage; // variável para mostrar erro
+  String? _errorMessage; // <-- variável para mostrar erro
 
   final String _apiUrl = "http://10.0.2.2:8000";
 
@@ -36,14 +36,14 @@ class _AddRelativeScreenState extends State<AddRelativeScreen> {
         url,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'id_da_familia': widget.familyId,
-          'nome': _nameController.text.trim(),
-          'apelido': _nicknameController.text.trim(),
+          'familyId': widget.familyId,
+          'name': _nameController.text.trim(),
+          'nickname': _nicknameController.text.trim(),
         }),
       );
 
-      if (response.statusCode == 201) {
-        if (!mounted) return; // garante que o contexto ainda existe
+      if (response.statusCode == 200) {
+        // Pode navegar pra trás e avisar sucesso, ou resetar campos
         Navigator.pop(context, true);
       } else {
         logger.warning("ERRO AO ADICIONAR PARENTE: Código ${response.statusCode}");

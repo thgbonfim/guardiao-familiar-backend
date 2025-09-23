@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:guardiao_familiar/home_screen_idoso.dart';
 import 'package:logging/logging.dart';
 
@@ -26,27 +28,65 @@ class GuardiaoFamiliarApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      home: ParentesScreen(),
+      home: ParentesScreen(familiaId: "7842756d-fbb5-45a9-b2e9-78a7617fc460"),
     );
   }
 }
 
-// Modelo simples de parente
+// Modelo de parente
 class Parente {
   final String id;
   final String nome;
 
   Parente({required this.id, required this.nome});
+
+  factory Parente.fromJson(Map<String, dynamic> json) {
+    return Parente(
+      id: json['id'] ?? '',
+      nome: json['nome'] ?? 'Sem nome',
+    );
+  }
 }
 
-// Tela de seleção de parentes
-class ParentesScreen extends StatelessWidget {
-  ParentesScreen({super.key}); // Removido const
+// Tela de seleção de parentes com fetch do backend
+class ParentesScreen extends StatefulWidget {
+  final String familiaId;
 
-  // Lista de exemplo de parentes (você pode substituir por dados do backend)
-  final List<Parente> parentes = [
-    Parente(id: "f3016f69-182f-4d4e-9795-636a71ed4878", nome: "Querido(a)")
-  ];
+  const ParentesScreen({super.key, required this.familiaId});
+
+  @override
+  State<ParentesScreen> createState() => _ParentesScreenState();
+}
+
+class _ParentesScreenState extends State<ParentesScreen> {
+  final Logger logger = Logger('ParentesScreen');
+  final String apiUrl = "http://10.0.2.2:8000"; // Ajuste se necessário
+
+  late Future<List<Parente>> _futureParentes;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureParentes = _fetchParentes();
+  }
+
+  Future<List<Parente>> _fetchParentes() async {
+    try {
+      final url = Uri.parse('$apiUrl/familias/${widget.familiaId}/parentes');
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList = json.decode(response.body);
+        return jsonList.map((json) => Parente.fromJson(json)).toList();
+      } else {
+        logger.warning('Falha ao carregar parentes: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      logger.severe('Erro ao buscar parentes: $e');
+      return [];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,36 +95,53 @@ class ParentesScreen extends StatelessWidget {
         title: const Text("Escolha o parente"),
         centerTitle: true,
       ),
-      body: ListView.builder(
-        itemCount: parentes.length,
-        itemBuilder: (context, index) {
-          final parente = parentes[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 3,
-            child: ListTile(
-              title: Text(
-                parente.nome,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                // Navega para a tela do parente selecionado
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HomeScreenIdoso(
-                      parenteId: parente.id,
-                      nomeParente: parente.nome,
+      body: FutureBuilder<List<Parente>>(
+        future: _futureParentes,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Erro ao carregar parentes.'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('Nenhum parente encontrado.'));
+          } else {
+            final parentes = snapshot.data!;
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: parentes.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final parente = parentes[index];
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 3,
+                  child: ListTile(
+                    title: Text(
+                      parente.nome,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HomeScreenIdoso(
+                            parenteId: parente.id,
+                            nomeParente: parente.nome,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 );
               },
-            ),
-          );
+            );
+          }
         },
       ),
     );

@@ -77,9 +77,8 @@ class LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-            Theme.of(context).colorScheme.primary.withAlpha((0.8 * 255).round()),
-Theme.of(context).colorScheme.primary.withAlpha((0.5 * 255).round()),
-
+              Theme.of(context).colorScheme.primary.withOpacity(0.8),
+              Theme.of(context).colorScheme.primary.withOpacity(0.5),
               Colors.white,
             ],
             stops: const [0.0, 0.4, 1.0],
