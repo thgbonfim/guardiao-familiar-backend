@@ -1,4 +1,4 @@
-// lib/add_medication_screen.dart
+// lib/add_medication_screen.dart - VERSÃO CORRIGIDA
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -23,11 +23,18 @@ class AddMedicationScreenState extends State<AddMedicationScreen> {
   final _nomeController = TextEditingController();
   final _horarioController = TextEditingController();
   
-  // Opções para os dias da semana
+  // ====================== AQUI ESTÁ A CORREÇÃO ======================
+  // Alteramos as chaves do mapa para corresponder exatamente ao que o back-end espera.
   final Map<String, bool> _diasSelecionados = {
-    'segunda': true, 'terca': true, 'quarta': true, 
-    'quinta': true, 'sexta': true, 'sabado': false, 'domingo': false
+    'Segunda-feira': true,
+    'Terça-feira': true,
+    'Quarta-feira': true,
+    'Quinta-feira': true,
+    'Sexta-feira': true,
+    'Sábado': false,
+    'Domingo': false,
   };
+  // =================================================================
 
   bool _isLoading = false;
 
@@ -118,6 +125,7 @@ class AddMedicationScreenState extends State<AddMedicationScreen> {
                   spacing: 8.0,
                   runSpacing: 4.0,
                   children: _diasSelecionados.keys.map((dia) {
+                    // O rótulo do botão continua pequeno (ex: "SEG"), mas o valor enviado será "Segunda-feira".
                     return FilterChip(
                       label: Text(dia.substring(0,3).toUpperCase()),
                       selected: _diasSelecionados[dia]!,
